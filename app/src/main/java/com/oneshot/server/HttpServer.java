@@ -1,5 +1,7 @@
 package com.oneshot.server;
 
+import android.content.ContentResolver;
+import android.net.Uri;
 import android.util.Log;
 
 import java.io.IOException;
@@ -10,14 +12,15 @@ import java.net.Socket;
 public class HttpServer extends Thread {
 
     public static final String TAG = "HttpServer";
-    private int port;
+    private final int port;
+    private final ContentResolver contentResolver;
+    private final Uri fileUri;
     private ServerSocket serverSocket = null;
 
-    public HttpServer(int port) {
+    public HttpServer(int port, ContentResolver contentResolver, Uri fileUri) {
         this.port = port;
-    }
-    public void setPort(int port) {
-        this.port = port;
+        this.contentResolver = contentResolver;
+        this.fileUri = fileUri;
     }
 
     public synchronized void startServer() {
@@ -55,10 +58,11 @@ public class HttpServer extends Thread {
             try {
                 Socket socket = serverSocket.accept();
                 InetAddress client = socket.getInetAddress();
-                Log.d(TAG, client.getHostAddress() + " " + client.getHostName());
-                new Thread(new HttpConnection(socket)).start();
+                Log.d(TAG, client.getHostAddress());
+                new Thread(new HttpConnection(socket, contentResolver, fileUri)).start();
             } catch (IOException e) {
                 e.printStackTrace();
+                Log.i(TAG, "run: " + e.getClass());
             }
         }
     }
