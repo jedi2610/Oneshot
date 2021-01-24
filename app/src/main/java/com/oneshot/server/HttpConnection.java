@@ -1,10 +1,9 @@
 package com.oneshot.server;
 
 import android.content.ContentResolver;
-import android.database.Cursor;
-import android.net.Uri;
-import android.provider.OpenableColumns;
 import android.util.Log;
+
+import com.oneshot.helper.UriData;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -13,6 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class HttpConnection implements Runnable {
 
@@ -27,13 +27,14 @@ public class HttpConnection implements Runnable {
     private static final String CRLF = "\r\n";
 
     private final Socket socket;
+    private boolean sendHeaderOnly = false;
     private final ContentResolver contentResolver;
-    private final Uri fileUri;
+    private final ArrayList<UriData> fileUris;
 
-    public HttpConnection(Socket socket, ContentResolver contentResolver, Uri fileUri) {
+    public HttpConnection(Socket socket, ContentResolver contentResolver, ArrayList<UriData> fileUris) {
         this.socket = socket;
         this.contentResolver = contentResolver;
-        this.fileUri = fileUri;
+        this.fileUris = fileUris;
     }
 
     private String getReturnCodeString(int returnCode) {
@@ -96,7 +97,7 @@ public class HttpConnection implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
             try {
-                output.write(constructHeader(BAD_REQUEST, getMimeType(null), 0).toString().getBytes());
+                output.write(constructHeader(BAD_REQUEST, null, 0).toString().getBytes());
             } catch (IOException exp) {
                 exp.printStackTrace();
                 Log.d(TAG, "handleRequest: Unable to write to output stream");
@@ -104,32 +105,12 @@ public class HttpConnection implements Runnable {
             return;
         }
 
-//        String html = "<html><head><title>HTTP Server</title></head><body><h1>This is a basic HTTP Server written in Java</h1></body><html>";
-        long size = 0;
-        String name = null;
-        try (Cursor metadataCursor = contentResolver.query(fileUri, new String[]{
-                        OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE}, null,
-                null, null)) {
-            if (metadataCursor.moveToFirst()) {
-                name = metadataCursor.getString(0);
-                size = metadataCursor.getLong(1);
-            }
-        }
-        StringBuilder response = constructHeader(OK, getMimeType(name), size);
-        Log.i(TAG, "requestHandler: header: " + header);
-
         if (header.toUpperCase().startsWith("HEAD")) {
-            try {
-                output.write(response.toString().getBytes());
-            } catch (IOException e) {
-                e.printStackTrace();
-                Log.d(TAG, "handleRequest: Unable to write to output stream");
-            }
-            return;
+            sendHeaderOnly = true;
         } else if (!header.startsWith("GET")) {
             // methods other than GET and HEAD are not supported
             try {
-                output.write(constructHeader(NOT_IMPLEMENTED, getMimeType(null), 0).toString().getBytes());
+                output.write(constructHeader(NOT_IMPLEMENTED, null, 0).toString().getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.d(TAG, "handleRequest: Unable to write to output stream");
@@ -140,7 +121,7 @@ public class HttpConnection implements Runnable {
         String[] words = header.split(" ");
         if (words[0].equals("GET") && words[1].equals("/favicon.ico")) {
             try {
-                output.write(constructHeader(NOT_FOUND, getMimeType(null), 0).toString().getBytes());
+                output.write(constructHeader(NOT_FOUND, null, 0).toString().getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.i(TAG, "handleRequest: Unable to write bytes to output stream");
@@ -148,78 +129,39 @@ public class HttpConnection implements Runnable {
             return;
         }
 
-        try {
-            InputStream fileInputStream = contentResolver.openInputStream(fileUri);
-            output.write(response.toString().getBytes());
-            byte[] buffer = new byte[4096];
-            for (int n; (n = fileInputStream.read(buffer)) != -1; ) {
-                output.write(buffer, 0, n);
-            }
-            output.write(CRLF.getBytes());
-            output.write(CRLF.getBytes());
-            output.flush();
-            fileInputStream.close();
-        } catch (FileNotFoundException e) {
-            try {
-                output.write(constructHeader(NOT_FOUND, getMimeType(null), 0).toString().getBytes());
-                Log.i(TAG, "handleRequest: " + fileUri.toString());
-            } catch (IOException exp) {
-                exp.printStackTrace();
-            }
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (fileUris.size() > 1) {
+            shareMultipleFiles(output);
+        } else {
+            shareOneFile(output);
         }
     }
 
-    private String getMimeType(String fileName) {
-        if (fileName == null)
-            return "application/octet-stream";
-
-        int pos = fileName.lastIndexOf(".");
-        String ext = fileName.substring(pos + 1);
-        switch (ext) {
-            case "jpg":
-            case "jpeg":
-                return "image/jpeg";
-            case "png":
-                return "image/png";
-            case "gif":
-                return "image/gif";
-            case "mp4":
-                return "video/mp4";
-            case "avi":
-                return "video/avi";
-            case "mov":
-                return "video/mov";
-            case "mp3":
-                return "audio/mpeg";
-            case "aac":
-                return "audio/aac";
-            case "wav":
-                return "audio/wav";
-            case "pdf":
-                return "application/pdf";
-            case "doc":
-                return "application/msword";
-            case "vcf":
-                return "text/x-vcard";
-            case "txt":
-                return "text/plain";
-            case "html":
-                return "text/html";
-            case "json":
-                return "application/json";
-            case "epub":
-                return "application/epub+zip";
-            default:
-                return "application/octet-stream";
+    private void shareOneFile(OutputStream outputStream) {
+        UriData data = fileUris.get(0);
+        String response = constructHeader(OK, data.getMimeType(), data.getSize()).toString();
+        try {
+            InputStream fileInputStream = data.getInputStream();
+            outputStream.write(response.getBytes());
+            byte[] buffer = new byte[4096];
+            for (int n; (n = fileInputStream.read(buffer)) != -1; ) {
+                outputStream.write(buffer, 0, n);
+            }
+            outputStream.write(CRLF.getBytes());
+            outputStream.write(CRLF.getBytes());
+            outputStream.flush();
+            fileInputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.i(TAG, "shareOneFile: cannot write to output stream");
         }
+    }
+
+    private void shareMultipleFiles(OutputStream outputStream) {
+
     }
 
     @Override
     public void run() {
-
         processResponse();
     }
 }

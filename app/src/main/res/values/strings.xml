@@ -13,4 +13,6 @@
     <string name="action_receive">Receive</string>
     <string name="start_server">Start Server</string>
     <string name="stop_server">Stop Server</string>
+    <string name="cant_get_ip">Can\'t get IP address</string>
+    <string name="share_url">Share URL</string>
 </resources>

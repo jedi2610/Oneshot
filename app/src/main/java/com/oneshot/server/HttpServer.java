@@ -1,26 +1,28 @@
 package com.oneshot.server;
 
 import android.content.ContentResolver;
-import android.net.Uri;
 import android.util.Log;
+
+import com.oneshot.helper.UriData;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class HttpServer extends Thread {
 
     public static final String TAG = "HttpServer";
     private final int port;
     private final ContentResolver contentResolver;
-    private final Uri fileUri;
+    private final ArrayList<UriData> fileUris;
     private ServerSocket serverSocket = null;
 
-    public HttpServer(int port, ContentResolver contentResolver, Uri fileUri) {
+    public HttpServer(int port, ContentResolver contentResolver, ArrayList<UriData> fileUris) {
         this.port = port;
         this.contentResolver = contentResolver;
-        this.fileUri = fileUri;
+        this.fileUris = fileUris;
     }
 
     public synchronized void startServer() {
@@ -59,7 +61,7 @@ public class HttpServer extends Thread {
                 Socket socket = serverSocket.accept();
                 InetAddress client = socket.getInetAddress();
                 Log.d(TAG, client.getHostAddress());
-                new Thread(new HttpConnection(socket, contentResolver, fileUri)).start();
+                new Thread(new HttpConnection(socket, contentResolver, fileUris)).start();
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.i(TAG, "run: " + e.getClass());
