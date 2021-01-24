@@ -100,7 +100,7 @@ public class UriData {
         return contentResolver.openInputStream(uri);
     }
 
-    public void setContentResolver(ContentResolver resolver) {
+    public static void setContentResolver(ContentResolver resolver) {
         contentResolver = resolver;
     }
 }

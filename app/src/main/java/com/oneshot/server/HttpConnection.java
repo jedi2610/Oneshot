@@ -1,12 +1,10 @@
 package com.oneshot.server;
 
-import android.content.ContentResolver;
 import android.util.Log;
 
 import com.oneshot.helper.UriData;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -28,12 +26,10 @@ public class HttpConnection implements Runnable {
 
     private final Socket socket;
     private boolean sendHeaderOnly = false;
-    private final ContentResolver contentResolver;
     private final ArrayList<UriData> fileUris;
 
-    public HttpConnection(Socket socket, ContentResolver contentResolver, ArrayList<UriData> fileUris) {
+    public HttpConnection(Socket socket, ArrayList<UriData> fileUris) {
         this.socket = socket;
-        this.contentResolver = contentResolver;
         this.fileUris = fileUris;
     }
 
@@ -140,8 +136,11 @@ public class HttpConnection implements Runnable {
         UriData data = fileUris.get(0);
         String response = constructHeader(OK, data.getMimeType(), data.getSize()).toString();
         try {
-            InputStream fileInputStream = data.getInputStream();
             outputStream.write(response.getBytes());
+            if (sendHeaderOnly) {
+                return;
+            }
+            InputStream fileInputStream = data.getInputStream();
             byte[] buffer = new byte[4096];
             for (int n; (n = fileInputStream.read(buffer)) != -1; ) {
                 outputStream.write(buffer, 0, n);

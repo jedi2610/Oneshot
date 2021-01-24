@@ -15,13 +15,11 @@ public class HttpServer extends Thread {
 
     public static final String TAG = "HttpServer";
     private final int port;
-    private final ContentResolver contentResolver;
     private final ArrayList<UriData> fileUris;
     private ServerSocket serverSocket = null;
 
-    public HttpServer(int port, ContentResolver contentResolver, ArrayList<UriData> fileUris) {
+    public HttpServer(int port, ArrayList<UriData> fileUris) {
         this.port = port;
-        this.contentResolver = contentResolver;
         this.fileUris = fileUris;
     }
 
@@ -61,7 +59,7 @@ public class HttpServer extends Thread {
                 Socket socket = serverSocket.accept();
                 InetAddress client = socket.getInetAddress();
                 Log.d(TAG, client.getHostAddress());
-                new Thread(new HttpConnection(socket, contentResolver, fileUris)).start();
+                new Thread(new HttpConnection(socket, fileUris)).start();
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.i(TAG, "run: " + e.getClass());

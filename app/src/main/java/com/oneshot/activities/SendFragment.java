@@ -31,7 +31,6 @@ import java.util.List;
 
 public class SendFragment extends Fragment {
 
-    private static final String TAG = "SendFragment";
     private HttpServer httpServer;
     private Button startButton;
     private Button stopButton;
@@ -57,9 +56,7 @@ public class SendFragment extends Fragment {
         Button shareUrl = view.findViewById(R.id.share_url);
 
         setIpTextView();
-        startButton.setOnClickListener(v -> {
-            startFilePickerActivity();
-        });
+        startButton.setOnClickListener(v -> startFilePickerActivity());
 
         stopButton.setOnClickListener(v -> {
             stopServer();
@@ -73,6 +70,7 @@ public class SendFragment extends Fragment {
             shareIntent.putExtra(Intent.EXTRA_TEXT, "http://" + ipAddr + ":9999");
             startActivity(Intent.createChooser(shareIntent, "Choose app to share URL"));
         });
+        UriData.setContentResolver(getContext().getContentResolver());
     }
 
     private void setIpTextView() {
@@ -95,7 +93,7 @@ public class SendFragment extends Fragment {
     }
 
     private void startServer(ArrayList<UriData> fileUris) {
-        httpServer = new HttpServer(9999, getContext().getContentResolver(), fileUris);
+        httpServer = new HttpServer(9999, fileUris);
         httpServer.startServer();
     }
 
