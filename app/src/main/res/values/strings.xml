@@ -15,4 +15,7 @@
     <string name="stop_server">Stop Server</string>
     <string name="cant_get_ip">Can\'t get IP address</string>
     <string name="share_url">Share URL</string>
+    <string name="ip_address">IP address</string>
+    <string name="port">Port</string>
+    <string name="download">Download</string>
 </resources>
