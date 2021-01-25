@@ -4,9 +4,13 @@ import android.content.ContentResolver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.util.Log;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 public class UriData {
 
@@ -33,6 +37,14 @@ public class UriData {
             }
         }
         mimeType = setMimeType();
+        //  android doesn't allow selecting files so i don't think this will be needed
+        //  try {
+        //    File file = new File(new URI(uri.getPath()));
+        //     isDirectory = file.isDirectory();
+        //     Log.i("UriData", "processUri: " + isDirectory + " " + file.getAbsolutePath());
+        // } catch (URISyntaxException e) {
+        //     e.printStackTrace();
+        // }
     }
 
     private String setMimeType() {
@@ -90,10 +102,6 @@ public class UriData {
 
     public String getMimeType() {
         return mimeType;
-    }
-
-    public boolean isDirectory() {
-        return isDirectory;
     }
 
     public InputStream getInputStream() throws IOException {

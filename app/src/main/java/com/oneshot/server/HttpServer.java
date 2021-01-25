@@ -19,6 +19,7 @@ public class HttpServer extends Thread {
     private ServerSocket serverSocket = null;
 
     public HttpServer(int port, ArrayList<UriData> fileUris) {
+        // https://fragments.turtlemeat.com/javawebserver.php
         this.port = port;
         this.fileUris = fileUris;
     }

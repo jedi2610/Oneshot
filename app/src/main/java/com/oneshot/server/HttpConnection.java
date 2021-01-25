@@ -2,6 +2,7 @@ package com.oneshot.server;
 
 import android.util.Log;
 
+import com.oneshot.helper.FileZipper;
 import com.oneshot.helper.UriData;
 
 import java.io.BufferedReader;
@@ -10,7 +11,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class HttpConnection implements Runnable {
 
@@ -53,13 +57,16 @@ public class HttpConnection implements Runnable {
         }
     }
 
-    private StringBuilder constructHeader(int returnCode, String mimeType, long fileSize) {
+    private StringBuilder constructHeader(int returnCode, String mimeType, long fileSize, String fileName) {
         StringBuilder response = new StringBuilder();
         response.append("HTTP/1.1 ");
         response.append(getReturnCodeString(returnCode)).append(CRLF);
         response.append("Connection: close").append(CRLF);
-        response.append("Content-Type: ").append(mimeType).append(CRLF);
-        response.append("Content-Length: ").append(fileSize).append(CRLF).append(CRLF);
+        if (fileUris.size() == 1) {
+            response.append("Content-Length: ").append(fileSize).append(CRLF);
+        }
+        response.append("Content-Disposition: attachment; filename=\"").append(fileName).append("\"").append(CRLF);
+        response.append("Content-Type: ").append(mimeType).append(CRLF).append(CRLF);
         return response;
     }
 
@@ -93,7 +100,7 @@ public class HttpConnection implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
             try {
-                output.write(constructHeader(BAD_REQUEST, null, 0).toString().getBytes());
+                output.write(constructHeader(BAD_REQUEST, null, 0, null).toString().getBytes());
             } catch (IOException exp) {
                 exp.printStackTrace();
                 Log.d(TAG, "handleRequest: Unable to write to output stream");
@@ -106,7 +113,7 @@ public class HttpConnection implements Runnable {
         } else if (!header.startsWith("GET")) {
             // methods other than GET and HEAD are not supported
             try {
-                output.write(constructHeader(NOT_IMPLEMENTED, null, 0).toString().getBytes());
+                output.write(constructHeader(NOT_IMPLEMENTED, null, 0, null).toString().getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.d(TAG, "handleRequest: Unable to write to output stream");
@@ -117,7 +124,7 @@ public class HttpConnection implements Runnable {
         String[] words = header.split(" ");
         if (words[0].equals("GET") && words[1].equals("/favicon.ico")) {
             try {
-                output.write(constructHeader(NOT_FOUND, null, 0).toString().getBytes());
+                output.write(constructHeader(NOT_FOUND, null, 0, null).toString().getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
                 Log.i(TAG, "handleRequest: Unable to write bytes to output stream");
@@ -134,7 +141,7 @@ public class HttpConnection implements Runnable {
 
     private void shareOneFile(OutputStream outputStream) {
         UriData data = fileUris.get(0);
-        String response = constructHeader(OK, data.getMimeType(), data.getSize()).toString();
+        String response = constructHeader(OK, data.getMimeType(), data.getSize(), data.getFileName()).toString();
         try {
             outputStream.write(response.getBytes());
             if (sendHeaderOnly) {
@@ -156,7 +163,17 @@ public class HttpConnection implements Runnable {
     }
 
     private void shareMultipleFiles(OutputStream outputStream) {
-
+        String mimeType = "multipart/x-zip";
+        String fileName = "oneshot-" + new SimpleDateFormat("dd-MM-yyyy-HH-mm-ss", Locale.getDefault()).format(new Date()) + ".zip";
+        String response = constructHeader(OK, mimeType, 0, fileName).toString();
+        try {
+            outputStream.write(response.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e(TAG, "shareMultipleFiles: " + e.getMessage());
+        }
+        FileZipper zipper = new FileZipper(outputStream, fileUris);
+        zipper.run();
     }
 
     @Override

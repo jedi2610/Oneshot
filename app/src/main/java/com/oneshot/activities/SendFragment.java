@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -103,6 +104,7 @@ public class SendFragment extends Fragment {
     }
 
     private String getIpAddress(boolean useIPv4) {
+        // https://stackoverflow.com/a/13007325
         try {
             List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
             for (NetworkInterface intf : interfaces) {
@@ -134,7 +136,7 @@ public class SendFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (resultCode != Activity.RESULT_OK || data == null || data.getData() == null) {
+        if (resultCode != Activity.RESULT_OK || data == null) {
             return;
         }
         startButton.setEnabled(false);
@@ -153,10 +155,11 @@ public class SendFragment extends Fragment {
                 Uri uri = uris.getItemAt(i).getUri();
                 fileUris.add(new UriData(uri));
             }
-        } else {
+        } else if (data.getData() != null){
             Uri uri = data.getData();
             fileUris.add(new UriData(uri));
         }
+        Log.i("SendFragment", "onActivityResult: " + fileUris.size());
         startServer(fileUris);
     }
 
