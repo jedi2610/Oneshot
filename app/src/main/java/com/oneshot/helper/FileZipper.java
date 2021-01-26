@@ -16,6 +16,7 @@ public class FileZipper implements Runnable {
     private final OutputStream output;
     private final ArrayList<UriData> fileUris;
     private ZipOutputStream zipFile;
+    private long fileSize = 0;
 
     public FileZipper(OutputStream output, ArrayList<UriData> fileUris) {
         this.output = output;
@@ -31,6 +32,7 @@ public class FileZipper implements Runnable {
             addFile(data);
         }
 
+        Log.i("FileZipper", "run: " + fileSize);
         try {
             zipFile.close();
         } catch (IOException e) {
@@ -49,6 +51,8 @@ public class FileZipper implements Runnable {
                 zipFile.write(buffer, 0, n);
             }
             file.close();
+            zipFile.closeEntry();
+            fileSize += entry.getSize();
         } catch (IOException e) {
             e.printStackTrace();
         }

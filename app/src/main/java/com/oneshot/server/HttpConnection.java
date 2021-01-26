@@ -165,7 +165,7 @@ public class HttpConnection implements Runnable {
     private void shareMultipleFiles(OutputStream outputStream) {
         String mimeType = "multipart/x-zip";
         String fileName = "oneshot-" + new SimpleDateFormat("dd-MM-yyyy-HH-mm-ss", Locale.getDefault()).format(new Date()) + ".zip";
-        String response = constructHeader(OK, mimeType, 0, fileName).toString();
+        String response = constructHeader(OK, mimeType, getFileSize(), fileName).toString();
         try {
             outputStream.write(response.getBytes());
         } catch (IOException e) {
@@ -174,6 +174,14 @@ public class HttpConnection implements Runnable {
         }
         FileZipper zipper = new FileZipper(outputStream, fileUris);
         zipper.run();
+    }
+
+    private long getFileSize() {
+        long fileSize = 0;
+        for (UriData fileUri : fileUris) {
+            fileSize += fileUri.getSize();
+        }
+        return fileSize;
     }
 
     @Override
